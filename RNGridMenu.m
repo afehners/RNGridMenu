@@ -46,11 +46,11 @@ CGPoint RNCentroidOfTouchesInView(NSSet *touches, UIView *view) {
         CGContextTranslateCTM(UIGraphicsGetCurrentContext(), -contentOffset.x, -contentOffset.y);
     }
 
-    if ([UIView instancesRespondToSelector:@selector(drawViewHierarchyInRect:afterScreenUpdates:)]) {
-        [self drawViewHierarchyInRect:self.bounds afterScreenUpdates:NO];
-    } else {
+    //if ([UIView instancesRespondToSelector:@selector(drawViewHierarchyInRect:afterScreenUpdates:)]) {
+    //    [self drawViewHierarchyInRect:self.bounds afterScreenUpdates:YES];
+    //} else {
         [self.layer renderInContext:UIGraphicsGetCurrentContext()];
-    }
+    //}
 
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
@@ -92,7 +92,7 @@ CGPoint RNCentroidOfTouchesInView(NSSet *touches, UIView *view) {
 
         // create grayscale image to mask context
         CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceGray();
-        CGContextRef context = CGBitmapContextCreate(nil, maskLayer.bounds.size.width, maskLayer.bounds.size.height, 8, 0, colorSpace, kCGImageAlphaNone);
+        CGContextRef context = CGBitmapContextCreate(nil, maskLayer.bounds.size.width, maskLayer.bounds.size.height, 8, 0, colorSpace, (CGBitmapInfo)kCGImageAlphaNone);
         CGContextTranslateCTM(context, 0, maskLayer.bounds.size.height);
         CGContextScaleCTM(context, 1.f, -1.f);
         [maskLayer renderInContext:context];
@@ -484,12 +484,24 @@ static RNGridMenu *rn_visibleGridMenu;
     return UIInterfaceOrientationMaskAll;
 }
 
+- (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
+    [super willRotateToInterfaceOrientation:toInterfaceOrientation duration:duration];
+
+    self.blurOverlayView.alpha = 0.f;
+}
+
 - (void)willAnimateRotationToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
     [super willAnimateRotationToInterfaceOrientation:toInterfaceOrientation duration:duration];
 
     if ([self isViewLoaded] && self.view.window != nil) {
         [self createScreenshotAndLayoutWithScreenshotCompletion:nil];
     }
+}
+
+- (void)didRotateFromInterfaceOrientation:(UIInterfaceOrientation)fromInterfaceOrientation {
+    [super didRotateFromInterfaceOrientation:fromInterfaceOrientation];
+
+    self.blurOverlayView.alpha = 1.f;
 }
 
 #pragma mark - Actions
@@ -560,11 +572,17 @@ static RNGridMenu *rn_visibleGridMenu;
     if (self.blurLevel > 0.f) {
         self.blurView.alpha = 0.f;
         self.menuView.alpha = 0.f;
+        self.blurOverlayView.alpha = 0.f;
 
         UIImage *screenshot = [self.parentViewController.view rn_screenshotWithCompressionQuality:0.7 respectingScreenScale:NO];
         self.menuView.alpha = 1.f;
         self.blurView.alpha = 1.f;
         self.blurView.layer.contents = (id)screenshot.CGImage;
+
+        if (self.blurOverlayView.superview != self.blurView) {
+            [self.blurView addSubview:self.blurOverlayView];
+            self.blurOverlayView.alpha = 1.f;
+        }
 
         if (screenshotCompletion != nil) {
             screenshotCompletion();
@@ -576,7 +594,7 @@ static RNGridMenu *rn_visibleGridMenu;
             dispatch_async(dispatch_get_main_queue(), ^{
                 CATransition *transition = [CATransition animation];
 
-                transition.duration = 0.2;
+                transition.duration = 0.25;
                 transition.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
                 transition.type = kCATransitionFade;
 

@@ -77,6 +77,8 @@ typedef NS_ENUM(NSInteger, RNGridMenuStyle) {
 @property (nonatomic, assign) CGFloat blurLevel;
 // defaults to nil ( == the whole background gets blurred)
 @property (nonatomic, strong) UIBezierPath *blurExclusionPath;
+// an optional view to overlay on top of the blurred background
+@property (nonatomic, strong) UIView *blurOverlayView;
 
 // The time in seconds for the show and dismiss animation
 // default 0.25f
