@@ -33,31 +33,26 @@ CGPoint RNCentroidOfTouchesInView(NSSet *touches, UIView *view) {
 
 @implementation UIView (Screenshot)
 
-- (UIImage *)rn_screenshot {
-    UIGraphicsBeginImageContext(self.bounds.size);
-    [self.layer renderInContext:UIGraphicsGetCurrentContext()];
-    UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
-    UIGraphicsEndImageContext();
+- (UIImage *)rn_screenshotWithCompressionQuality:(CGFloat)compressionQuality respectingScreenScale:(BOOL)respectingScreenScale {
+    if (respectingScreenScale) {
+        UIGraphicsBeginImageContextWithOptions(self.bounds.size, YES, [UIScreen mainScreen].scale);
+    } else {
+        UIGraphicsBeginImageContext(self.bounds.size);
+    }
 
-    // helps w/ our colors when blurring
-    // feel free to adjust jpeg quality (lower = higher perf)
-    NSData *imageData = UIImageJPEGRepresentation(image, 0.75);
-    image = [UIImage imageWithData:imageData];
+    if ([self isKindOfClass:[UIScrollView class]]) {
+        CGPoint contentOffset = ((UIScrollView *)self).contentOffset;
+        // translate context to visible portion of scrollView
+        CGContextTranslateCTM(UIGraphicsGetCurrentContext(), -contentOffset.x, -contentOffset.y);
+    }
 
-    return image;
-}
-
-- (UIImage *)rn_screenshotForScrollViewWithContentOffset:(CGPoint)contentOffset {
-    UIGraphicsBeginImageContext(self.bounds.size);
-    //need to translate the context down to the current visible portion of the scrollview
-    CGContextTranslateCTM(UIGraphicsGetCurrentContext(), 0, -contentOffset.y);
     [self.layer renderInContext:UIGraphicsGetCurrentContext()];
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
     
     // helps w/ our colors when blurring
     // feel free to adjust jpeg quality (lower = higher perf)
-    NSData *imageData = UIImageJPEGRepresentation(image, 0.55);
+    NSData *imageData = UIImageJPEGRepresentation(image, compressionQuality);
     image = [UIImage imageWithData:imageData];
     
     return image;
@@ -559,11 +554,9 @@ static RNGridMenu *rn_visibleGridMenu;
 - (void)createScreenshotAndLayoutWithScreenshotCompletion:(dispatch_block_t)screenshotCompletion {
     if (self.blurLevel > 0.f) {
         self.blurView.alpha = 0.f;
-
         self.menuView.alpha = 0.f;
-        UIImage *screenshot = ([self.parentViewController.view isKindOfClass:[UIScrollView class]] ?
-                               [self.parentViewController.view rn_screenshotForScrollViewWithContentOffset:[(UIScrollView *)self.parentViewController.view contentOffset]] :
-                               [self.parentViewController.view rn_screenshot]);        
+
+        UIImage *screenshot = [self.parentViewController.view rn_screenshotWithCompressionQuality:0.7 respectingScreenScale:NO];
         self.menuView.alpha = 1.f;
         self.blurView.alpha = 1.f;
         self.blurView.layer.contents = (id)screenshot.CGImage;
