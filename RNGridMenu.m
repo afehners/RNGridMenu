@@ -46,15 +46,20 @@ CGPoint RNCentroidOfTouchesInView(NSSet *touches, UIView *view) {
         CGContextTranslateCTM(UIGraphicsGetCurrentContext(), -contentOffset.x, -contentOffset.y);
     }
 
-    [self.layer renderInContext:UIGraphicsGetCurrentContext()];
+    if ([UIView instancesRespondToSelector:@selector(drawViewHierarchyInRect:afterScreenUpdates:)]) {
+        [self drawViewHierarchyInRect:self.bounds afterScreenUpdates:NO];
+    } else {
+        [self.layer renderInContext:UIGraphicsGetCurrentContext()];
+    }
+
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
-    
+
     // helps w/ our colors when blurring
     // feel free to adjust jpeg quality (lower = higher perf)
     NSData *imageData = UIImageJPEGRepresentation(image, compressionQuality);
     image = [UIImage imageWithData:imageData];
-    
+
     return image;
 }
 
@@ -706,7 +711,7 @@ static RNGridMenu *rn_visibleGridMenu;
     [parentViewController.view addSubview:self.view];
     [self didMoveToParentViewController:self];
     if (callAppearanceMethods) [self endAppearanceTransition];
-    
+
     if ([parentViewController.view respondsToSelector:@selector(setScrollEnabled:)] && [(UIScrollView *)parentViewController.view isScrollEnabled]) {
         self.parentViewCouldScroll = YES;
         [(UIScrollView *)parentViewController.view setScrollEnabled:NO];
@@ -718,7 +723,7 @@ static RNGridMenu *rn_visibleGridMenu;
         [(UIScrollView *)self.parentViewController.view setScrollEnabled:YES];
         self.parentViewCouldScroll = NO;
     }
-    
+
     if (callAppearanceMethods) [self beginAppearanceTransition:NO animated:NO];
     [self willMoveToParentViewController:nil];
     [self.view removeFromSuperview];
