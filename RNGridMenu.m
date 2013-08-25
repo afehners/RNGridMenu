@@ -46,11 +46,11 @@ CGPoint RNCentroidOfTouchesInView(NSSet *touches, UIView *view) {
         CGContextTranslateCTM(UIGraphicsGetCurrentContext(), -contentOffset.x, -contentOffset.y);
     }
 
-    //if ([UIView instancesRespondToSelector:@selector(drawViewHierarchyInRect:afterScreenUpdates:)]) {
-    //    [self drawViewHierarchyInRect:self.bounds afterScreenUpdates:YES];
-    //} else {
+    if ([UIView instancesRespondToSelector:@selector(drawViewHierarchyInRect:afterScreenUpdates:)]) {
+        [self drawViewHierarchyInRect:self.bounds afterScreenUpdates:NO];
+    } else {
         [self.layer renderInContext:UIGraphicsGetCurrentContext()];
-    //}
+    }
 
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
@@ -124,9 +124,10 @@ CGPoint RNCentroidOfTouchesInView(NSSet *touches, UIView *view) {
 
     //create vImage_Buffer for output
     pixelBuffer = malloc(CGImageGetBytesPerRow(img) * CGImageGetHeight(img));
-
-    if(pixelBuffer == NULL)
-        NSLog(@"No pixelbuffer");
+    if(pixelBuffer == NULL) {
+        CFRelease(inBitmapData);
+        return nil;
+    }
 
     outBuffer.data = pixelBuffer;
     outBuffer.width = CGImageGetWidth(img);
@@ -145,7 +146,6 @@ CGPoint RNCentroidOfTouchesInView(NSSet *touches, UIView *view) {
     error = vImageBoxConvolve_ARGB8888(&inBuffer, &outBuffer2, NULL, 0, 0, boxSize, boxSize, NULL, kvImageEdgeExtend);
     error = vImageBoxConvolve_ARGB8888(&outBuffer2, &inBuffer, NULL, 0, 0, boxSize, boxSize, NULL, kvImageEdgeExtend);
     error = vImageBoxConvolve_ARGB8888(&inBuffer, &outBuffer, NULL, 0, 0, boxSize, boxSize, NULL, kvImageEdgeExtend);
-
     if (error) {
         NSLog(@"error from convolution %ld", error);
     }
@@ -439,11 +439,6 @@ static RNGridMenu *rn_visibleGridMenu;
     self.menuView.opaque = NO;
     self.menuView.clipsToBounds = YES;
 
-    CGFloat m34 = 1 / 300.f;
-    CATransform3D transform = CATransform3DIdentity;
-    transform.m34 = m34;
-    self.menuView.layer.transform = transform;
-
     if (self.backgroundPath != nil) {
         CAShapeLayer *maskLayer = [CAShapeLayer new];
         maskLayer.frame = self.menuView.frame;
@@ -465,8 +460,7 @@ static RNGridMenu *rn_visibleGridMenu;
 
     if (self.menuStyle == RNGridMenuStyleGrid) {
         [self layoutAsGrid];
-    }
-    else if (self.menuStyle == RNGridMenuStyleList) {
+    } else if (self.menuStyle == RNGridMenuStyleList) {
         [self layoutAsList];
     }
 
@@ -477,11 +471,11 @@ static RNGridMenu *rn_visibleGridMenu;
 }
 
 - (BOOL)shouldAutorotate {
-    return YES;
+    return [self.parentViewController shouldAutorotate];
 }
 
 - (NSUInteger)supportedInterfaceOrientations {
-    return UIInterfaceOrientationMaskAll;
+    return self.parentViewController.supportedInterfaceOrientations;
 }
 
 - (void)willRotateToInterfaceOrientation:(UIInterfaceOrientation)toInterfaceOrientation duration:(NSTimeInterval)duration {
@@ -687,11 +681,11 @@ static RNGridMenu *rn_visibleGridMenu;
         opacityAnimation.toValue = @0.;
         opacityAnimation.duration = self.animationDuration;
         [self.blurView.layer addAnimation:opacityAnimation forKey:nil];
+        self.blurView.layer.opacity = 0.f;
 
         CATransform3D transform = CATransform3DScale(self.menuView.layer.transform, 0, 0, 0);
-
         CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"transform"];
-        scaleAnimation.fromValue = [NSValue valueWithCATransform3D:self.menuView.layer.transform];
+        scaleAnimation.fromValue = [NSValue valueWithCATransform3D:CATransform3DIdentity];
         scaleAnimation.toValue = [NSValue valueWithCATransform3D:transform];
         scaleAnimation.duration = self.animationDuration;
 
@@ -700,9 +694,8 @@ static RNGridMenu *rn_visibleGridMenu;
         animationGroup.duration = self.animationDuration;
         animationGroup.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
         [self.menuView.layer addAnimation:animationGroup forKey:nil];
-
-        self.blurView.layer.opacity = 0;
         self.menuView.layer.transform = transform;
+
         [self performSelector:@selector(cleanupGridMenu) withObject:nil afterDelay:self.animationDuration];
     } else {
         self.view.hidden = YES;
