@@ -119,7 +119,6 @@ CGPoint RNCentroidOfTouchesInView(NSSet *touches, UIView *view) {
     inBuffer.width = CGImageGetWidth(img);
     inBuffer.height = CGImageGetHeight(img);
     inBuffer.rowBytes = CGImageGetBytesPerRow(img);
-
     inBuffer.data = (void*)CFDataGetBytePtr(inBitmapData);
 
     //create vImage_Buffer for output
@@ -157,7 +156,7 @@ CGPoint RNCentroidOfTouchesInView(NSSet *touches, UIView *view) {
                                              8,
                                              outBuffer.rowBytes,
                                              colorSpace,
-                                             kCGImageAlphaNoneSkipLast);
+                                             (CGBitmapInfo)kCGImageAlphaNoneSkipLast);
     CGImageRef imageRef = CGBitmapContextCreateImage(ctx);
     UIImage *returnImage = [UIImage imageWithCGImage:imageRef];
 
@@ -545,7 +544,9 @@ static RNGridMenu *rn_visibleGridMenu;
     CGFloat itemHeight = floorf(height / (CGFloat)rowCount);
     CGFloat headerOffset = self.headerView.bounds.size.height;
 
-    self.menuView.frame = [self menuFrameWithWidth:width height:height center:self.menuCenter headerOffset:headerOffset];
+    if (CGAffineTransformIsIdentity(self.menuView.transform)) {
+        self.menuView.frame = [self menuFrameWithWidth:width height:height center:self.menuCenter headerOffset:headerOffset];
+    }
 
     for (NSInteger i = 0; i < rowCount; i++) {
         NSInteger rowLength = ceilf(itemCount / (CGFloat)rowCount);
@@ -676,27 +677,13 @@ static RNGridMenu *rn_visibleGridMenu;
     }
 
     if (animated) {
-        CABasicAnimation *opacityAnimation = [CABasicAnimation animationWithKeyPath:@"opacity"];
-        opacityAnimation.fromValue = @1.;
-        opacityAnimation.toValue = @0.;
-        opacityAnimation.duration = self.animationDuration;
-        [self.blurView.layer addAnimation:opacityAnimation forKey:nil];
-        self.blurView.layer.opacity = 0.f;
-
-        CATransform3D transform = CATransform3DScale(self.menuView.layer.transform, 0, 0, 0);
-        CABasicAnimation *scaleAnimation = [CABasicAnimation animationWithKeyPath:@"transform"];
-        scaleAnimation.fromValue = [NSValue valueWithCATransform3D:CATransform3DIdentity];
-        scaleAnimation.toValue = [NSValue valueWithCATransform3D:transform];
-        scaleAnimation.duration = self.animationDuration;
-
-        CAAnimationGroup *animationGroup = [CAAnimationGroup animation];
-        animationGroup.animations = @[opacityAnimation, scaleAnimation];
-        animationGroup.duration = self.animationDuration;
-        animationGroup.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
-        [self.menuView.layer addAnimation:animationGroup forKey:nil];
-        self.menuView.layer.transform = transform;
-
-        [self performSelector:@selector(cleanupGridMenu) withObject:nil afterDelay:self.animationDuration];
+        [UIView animateWithDuration:self.animationDuration delay:0. options:UIViewAnimationOptionBeginFromCurrentState | UIViewAnimationOptionAllowUserInteraction | UIViewAnimationOptionCurveEaseInOut animations:^{
+            self.blurView.alpha = 0.f;
+            self.menuView.transform = CGAffineTransformMakeScale(0.f, 0.f);
+            self.menuView.alpha = 0.f;
+        } completion:^(BOOL finished) {
+            [self cleanupGridMenu];
+        }];
     } else {
         self.view.hidden = YES;
         [self cleanupGridMenu];
