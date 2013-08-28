@@ -46,11 +46,11 @@ CGPoint RNCentroidOfTouchesInView(NSSet *touches, UIView *view) {
         CGContextTranslateCTM(UIGraphicsGetCurrentContext(), -contentOffset.x, -contentOffset.y);
     }
 
-    if ([UIView instancesRespondToSelector:@selector(drawViewHierarchyInRect:afterScreenUpdates:)]) {
-        [self drawViewHierarchyInRect:self.bounds afterScreenUpdates:NO];
-    } else {
+//    if ([UIView instancesRespondToSelector:@selector(drawViewHierarchyInRect:afterScreenUpdates:)]) {
+//        [self drawViewHierarchyInRect:self.bounds afterScreenUpdates:NO];
+//    } else {
         [self.layer renderInContext:UIGraphicsGetCurrentContext()];
-    }
+//    }
 
     UIImage *image = UIGraphicsGetImageFromCurrentImageContext();
     UIGraphicsEndImageContext();
